@@ -17,10 +17,12 @@ class _WikipediaExplorerState extends State<WikipediaExplorer> {
   final Set<String> _favorites = Set<String>();
   final _key = UniqueKey();
   bool _isLoadingPage;
-
+  WebViewController controllerGlobal;
   @override
   void initState() {
+
     super.initState();
+
     _isLoadingPage = true;
   }
 
@@ -37,47 +39,17 @@ class _WikipediaExplorerState extends State<WikipediaExplorer> {
 
     return new WillPopScope(
       // ignore: missing_return
-      onWillPop: () {
-        showDialog(
-            context: context,
-            builder: (_) {
-              return AlertDialog(
-                title: Text('Deseja realmente saí do Toritama Jeans?'),
-                actions: [
-                  // ignore: missing_return, missing_return, missing_return
-                  FlatButton(
-                    onPressed: () =>
-                        Navigator.pop(context, false), // passing false
-                    child: Text('Não'),
-                  ),
-                  FlatButton(
-                    onPressed: () =>
-                        Navigator.pop(context, true), // passing true
-                    child: Text('Sim'),
-                  ),
-                ],
-              );
-              // ignore: missing_return
-            }).then((exit) {
-          if (exit == null) return;
-
-          if (exit) {
-            // user pressed Yes button
-            SystemChannels.platform.invokeMethod('SystemNavigator.pop');
-          } else {
-            // user pressed No button
-          }
-        });
-      },
+      onWillPop: () =>  _handleBack(context),
+    child: SafeArea(
+    top: true,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Oficial'),
-          backgroundColor: PrimaryColor,
-          // This drop down menu demonstrates that Flutter widgets can be shown over the web view.
-          actions: <Widget>[
-            NavigationControls(_controller.future),
-            Menu(_controller.future, () => _favorites),
-          ],
+        appBar: PreferredSize(
+            preferredSize: Size.fromHeight(0.0),
+            child: AppBar(
+              automaticallyImplyLeading: false,
+              backgroundColor: Colors.black,
+              elevation: 0.0,
+            )
         ),
         body: Stack(
           children: <Widget>[
@@ -86,7 +58,7 @@ class _WikipediaExplorerState extends State<WikipediaExplorer> {
               initialUrl: 'https://www.toritama-jeans.com/webview/',
               javascriptMode: JavascriptMode.unrestricted,
               onWebViewCreated: (WebViewController webViewController) {
-                _controller.complete(webViewController);
+               controllerGlobal = webViewController;
               },
               onPageFinished: (finish) {
                 setState(() {
@@ -107,11 +79,7 @@ class _WikipediaExplorerState extends State<WikipediaExplorer> {
                   _launchURL(request.url);
                   return NavigationDecision.prevent;
                   }
-                else if (request.url.contains("whatsapp:")) {
-                  _launchURL(request.url);
-                  return NavigationDecision.prevent;
-                }
-                else if (request.url.contains("intent:")) {
+                else if (request.url.contains("instagram")) {
                   _launchURL(request.url);
                   return NavigationDecision.prevent;
                 }
@@ -129,7 +97,50 @@ class _WikipediaExplorerState extends State<WikipediaExplorer> {
           ],
         ),
       ),
-    );
+    ), );
+  }
+
+
+
+
+  Future<void> _handleBack(context) async {
+    var status = await controllerGlobal.canGoBack();
+    if (status) {
+      controllerGlobal.goBack();
+    } else {
+      showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Deseja saí do Toritama Jeans?'),
+            actions: <Widget>[
+              FlatButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('Não'),
+              ),
+              FlatButton(
+                onPressed: () {
+                  SystemNavigator.pop();
+                },
+                child: Text('Sim'),
+              ),
+            ],
+          ));
+    }
+  }
+
+  Future<bool> _exitApp(BuildContext context) async {
+    if (await controllerGlobal.canGoBack()) {
+      print("onwill goback");
+      controllerGlobal.goBack();
+      return Future.value(true);
+    } else {
+      Scaffold.of(context).showSnackBar(
+        const SnackBar(content: Text("No back history item")),
+      );
+      return Future.value(false);
+    }
   }
 
   _bookmarkButton() {
